@@ -1,0 +1,27 @@
+name: Дайджест в Telegram
+on:
+  push:
+    branches: [main]
+    paths: ["digest.html"]
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Отправить digest.html в Telegram
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHATS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.request
+          text = open("digest.html", encoding="utf-8").read().strip()
+          for chat in [c.strip() for c in os.environ["CHATS"].split(",") if c.strip()]:
+              body = json.dumps({"chat_id": chat, "text": text, "parse_mode": "HTML",
+                                 "disable_web_page_preview": False}).encode()
+              req = urllib.request.Request(
+                  f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage",
+                  data=body, headers={"Content-Type": "application/json"})
+              with urllib.request.urlopen(req) as r:
+                  print("sent to", chat, json.load(r)["ok"])
+          EOF
